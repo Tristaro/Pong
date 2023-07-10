@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pong Game</title>
+  <style>
+    * {
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    canvas {
+      background-color: #000;
+      border: 2px solid #fff;
+      display: block;
+      margin: 0 auto;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+
+    #score-container {
+      color: #fff;
+      font-size: 48px;
+      text-align: center;
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #score-left {
+      color: #0000FF;
+      margin-right: 20px;
+    }
+
+    #score-right {
+      color: #FF0000;
+      margin-left: 20px;
+    }
+
+    #restart-button {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 18px;
+      background: #fff;
+      color: #000;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="pong" width="800" height="400"></canvas>
+  <div id="score-container">
+    <div id="score-left">0</div>
+    <button id="restart-button">Restart</button>
+    <div id="score-right">0</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("pong");
+    const context = canvas.getContext("2d");
+
+    const paddleWidth = 10;
+    const paddleHeight = 100;
+    const ballRadius = 10;
+
+    const leftPaddle = {
+      x: 0,
+      y: canvas.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      dy: 0,
+      color: "#0000FF",
+    };
+
+    const rightPaddle = {
+      x: canvas.width - paddleWidth,
+      y: canvas.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      dy: 0,
+      color: "#FF0000",
+    };
+
+    const ball = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      dx: 4,
+      dy: 4,
+      speed: 4,
+      trail: [],
+      trailLength: 30,
+      color: "#FFFFFF",
+    };
+
+    let leftScore = 0;
+    let rightScore = 0;
+
+    const scoreLeftElement = document.getElementById("score-left");
+    const scoreRightElement = document.getElementById("score-right");
+    const restartButton = document.getElementById("restart-button");
+
+    // Update paddle position
+    function updatePaddlePosition() {
+      leftPaddle.y += leftPaddle.dy;
+      rightPaddle.y += rightPaddle.dy;
+
+      if (leftPaddle.y < 0) {
+        leftPaddle.y = 0;
+      } else if (leftPaddle.y + leftPaddle.height > canvas.height) {
+        leftPaddle.y = canvas.height - leftPaddle.height;
+      }
+
+      if (rightPaddle.y < 0) {
+        rightPaddle.y = 0;
+      } else if (rightPaddle.y + rightPaddle.height > canvas.height) {
+        rightPaddle.y = canvas.height - rightPaddle.height;
+      }
+    }
+
+    // Update ball position
+    function updateBallPosition() {
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      if (ball.y + ballRadius > canvas.height || ball.y - ballRadius < 0) {
+        ball.dy *= -1;
+      }
+
+      if (ball.x + ballRadius > canvas.width) {
+        leftScore++;
+        resetBall();
+      } else if (ball.x - ballRadius < 0) {
+        rightScore++;
+        resetBall();
+      }
+
+      if (
+        ball.x - ballRadius < leftPaddle.x + leftPaddle.width &&
+        ball.y + ballRadius > leftPaddle.y &&
+        ball.y - ballRadius < leftPaddle.y + leftPaddle.height
+      ) {
+        ball.dx *= -1;
+        ball.speed += 0.2;
+      }
+
+      if (
+        ball.x + ballRadius > rightPaddle.x &&
+        ball.y + ballRadius > rightPaddle.y &&
+        ball.y - ballRadius < rightPaddle.y + rightPaddle.height
+      ) {
+        ball.dx *= -1;
+        ball.speed += 0.2;
+      }
+
+      if (ball.x - ballRadius < 0 || ball.x + ballRadius > canvas.width) {
+        createBallTrail();
+      }
+    }
+
+    // Reset ball position
+    function resetBall() {
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height / 2;
+      ball.dx = ball.speed * (Math.random() > 0.5 ? 1 : -1);
+      ball.dy = ball.speed * (Math.random() > 0.5 ? 1 : -1);
+      ball.speed = 4;
+      ball.trail = [];
+    }
+
+    // Create ball trail
+    function createBallTrail() {
+      if (ball.trail.length >= ball.trailLength) {
+        ball.trail.shift();
+      }
+
+      ball.trail.push({ x: ball.x, y: ball.y });
+    }
+
+    // Render paddles
+    function drawPaddles() {
+      context.fillStyle = leftPaddle.color;
+      context.fillRect(
+        leftPaddle.x,
+        leftPaddle.y,
+        leftPaddle.width,
+        leftPaddle.height
+      );
+
+      context.fillStyle = rightPaddle.color;
+      context.fillRect(
+        rightPaddle.x,
+        rightPaddle.y,
+        rightPaddle.width,
+        rightPaddle.height
+      );
+    }
+
+    // Render ball
+    function drawBall() {
+      context.beginPath();
+      context.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2, false);
+      context.fillStyle = ball.color;
+      context.fill();
+      context.closePath();
+
+      // Draw ball trail
+      context.fillStyle = ball.color;
+      for (let i = 0; i < ball.trail.length; i++) {
+        const trailPoint = ball.trail[i];
+        const alpha = 1 - i / ball.trailLength;
+        context.globalAlpha = alpha;
+        context.fillRect(trailPoint.x - ballRadius, trailPoint.y - ballRadius, ballRadius * 2, ballRadius * 2);
+      }
+
+      context.globalAlpha = 1;
+    }
+
+    // Render score
+    function drawScore() {
+      scoreLeftElement.innerHTML = leftScore;
+      scoreRightElement.innerHTML = rightScore;
+    }
+
+    // Control paddles
+    document.addEventListener("keydown", function (event) {
+      switch (event.key) {
+        case "w":
+          leftPaddle.dy = -6;
+          break;
+        case "s":
+          leftPaddle.dy = 6;
+          break;
+        case "ArrowUp":
+          rightPaddle.dy = -6;
+          break;
+        case "ArrowDown":
+          rightPaddle.dy = 6;
+          break;
+      }
+    });
+
+    document.addEventListener("keyup", function (event) {
+      switch (event.key) {
+        case "w":
+        case "s":
+          leftPaddle.dy = 0;
+          break;
+        case "ArrowUp":
+        case "ArrowDown":
+          rightPaddle.dy = 0;
+          break;
+      }
+    });
+
+    // Restart game
+    restartButton.addEventListener("click", function () {
+      leftScore = 0;
+      rightScore = 0;
+      resetBall();
+    });
+
+    // Game loop
+    function gameLoop() {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      updatePaddlePosition();
+      updateBallPosition();
+      drawPaddles();
+      drawBall();
+      drawScore();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
+
